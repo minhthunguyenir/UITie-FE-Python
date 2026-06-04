@@ -1,74 +1,86 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createPost, deletePost, fetchFeed, searchPost, updatePost, toggleLike, sharePost } from './postApi'
-import type { CreatePostPayload, Post, UpdatePostPayload } from '#/types/post'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import axiosClient from './axiosClient'
+import type { Post, CreatePostPayload } from '#/types/post'
 
+// 1. Lấy danh sách bài viết trên feed
 export const useFeedPosts = (scope: 'all' | 'following' = 'all') => {
   return useQuery({
-    queryKey: ['post', 'feed', scope], // 🚩 Thêm scope vào đây để tự động fetch lại khi đổi tab
-    queryFn: () => fetchFeed(scope),   // 🚩 Truyền scope sang cho file postApi xử lý
+    queryKey: ['feedPosts', scope],
+    queryFn: async () => {
+      const res = await axiosClient.get(`/posts/?scope=${scope}`)
+      // Django DRF trả về format { data: [...] } theo quy tắc bắt buộc
+      return res.data?.data || []
+    },
   })
 }
 
-export const useSearchPost = (keyword?: string) => {
-  return useQuery({
-    queryKey: ['post', 'search', keyword],
-    queryFn: () => searchPost(keyword),
-  })
-}
-
+// 2. Tạo bài viết mới
 export const useCreatePost = () => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (payload: CreatePostPayload) => createPost(payload),
+    mutationFn: async (payload: CreatePostPayload) => {
+      const res = await axiosClient.post('/posts/', payload)
+      return res.data
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['post', 'feed'] })
+      // Refresh lại danh sách trên Dashboard sau khi đăng bài
+      queryClient.invalidateQueries({ queryKey: ['feedPosts'] })
     },
   })
 }
 
-export const useToggleLike = () => {
-  return useMutation({
-    mutationFn: (id: number) => toggleLike(id),
-  })
-}
-
-export const useSharePost = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({ id, content }: { id: number; content?: string }) => sharePost(id, content),
-    onSuccess: () => {
-      // Cập nhật lại Feed để hiển thị bài Share mới ngay lập tức
-      queryClient.invalidateQueries({ queryKey: ['post', 'feed'] })
-    },
-  })
-}
-
+// 3. Cập nhật bài viết
 export const useUpdatePost = () => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, payload }: { id: number; payload: UpdatePostPayload }) =>
-      updatePost(id, payload),
-    onSuccess: (data, variables) => {
-      queryClient.setQueryData<Post[]>(['post', 'feed'], (old) =>
-        old
-          ? old.map((p) =>
-              p.id === variables.id ? { ...p, ...data.data } : p,
-            )
-          : old,
-      )
-      queryClient.invalidateQueries({ queryKey: ['post', 'feed'] })
-      queryClient.invalidateQueries({ queryKey: ['post', 'search'] })
+    mutationFn: async ({ id, payload }: { id: number, payload: CreatePostPayload }) => {
+      const res = await axiosClient.put(`/posts/${id}`, payload)
+      return res.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feedPosts'] })
     },
   })
 }
 
+// 4. Xóa bài viết
 export const useDeletePost = () => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: number) => deletePost(id),
+    mutationFn: async (id: number) => {
+      const res = await axiosClient.delete(`/posts/${id}`)
+      return res.data
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['post', 'feed'] })
-      queryClient.invalidateQueries({ queryKey: ['post', 'search'] })
+      queryClient.invalidateQueries({ queryKey: ['feedPosts'] })
+    },
+  })
+}
+
+// 5. Like/Bỏ Like bài viết
+export const useToggleLike = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (postId: number) => {
+      const res = await axiosClient.post(`/posts/${postId}/like`)
+      return res.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feedPosts'] })
+    },
+  })
+}
+
+// 6. Chia sẻ bài viết
+export const useSharePost = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, content }: { id: number, content: string }) => {
+      const res = await axiosClient.post(`/posts/${id}/share`, { content })
+      return res.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feedPosts'] })
     },
   })
 }
