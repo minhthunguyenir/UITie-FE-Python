@@ -10,7 +10,7 @@ import {
   BookOpen,
 } from 'lucide-react'
 import type { UserRole } from '#/lib/fake-api'
-import { useProfile, useUpdateProfile, useUserPosts } from '#/api/useProfile'
+import { useProfile, useUpdateProfile, useUserPosts, useToggleFollow } from '#/api/useProfile'
 import ReportModal from '../../components/ReportModal'
 import toast from 'react-hot-toast'
 import FeedPostCard from '#/components/FeedPostCard'
@@ -53,15 +53,17 @@ function RoleBadge({ role }: { role: string }) {
 
 function ProfilePage() {
   const { user: userId } = Route.useSearch()
-  const isMe = !userId
 
   const [tab, setTab] = useState<string>('posts')
-  const [following, setFollowing] = useState(!isMe)
 
   // Hook TanStack Query tự động quản lý fetching
   const { data: profileData, isLoading, isError } = useProfile(userId)
+  
+  // Ưu tiên cờ is_me từ Backend (đúng trong mọi trường hợp), hoặc fallback về !userId nếu URL trống
+  const isMe = profileData?.is_me || !userId
   const { mutateAsync: updateProfile, isPending: isUpdating } = useUpdateProfile()
   const { data: posts, isLoading: isLoadingPosts } = useUserPosts(profileData?.id)
+  const { mutate: toggleFollow, isPending: isTogglingFollow } = useToggleFollow()
 
   const displayedPosts = posts?.filter((post: any) => post.status !== 'Rejected') || []
 
@@ -203,12 +205,13 @@ function ProfilePage() {
               ) : (
                 <>
                   <Button
-                    variant={following ? 'light' : 'primary'}
-                    onClick={() => setFollowing((p) => !p)}
+                variant={profileData.is_following ? 'light' : 'primary'}
+                onClick={() => toggleFollow(profileData.id)}
+                disabled={isTogglingFollow}
                     className="d-flex align-items-center gap-2 border"
                   >
-                    {following ? <Check size={16} /> : <UserPlus size={16} />}
-                    {following ? 'Đang theo dõi' : 'Theo dõi'}
+                {profileData.is_following ? <Check size={16} /> : <UserPlus size={16} />}
+                {profileData.is_following ? 'Đang theo dõi' : 'Theo dõi'}
                   </Button>
                   <Button
                     variant="outline-primary"
@@ -229,9 +232,9 @@ function ProfilePage() {
                   {/* 🚩 CODE CẬP NHẬT: Nhúng Modal báo cáo chạy ngầm và truyền userId qua */}
                   {isReportModalOpen && (
                     <ReportModal
-                      isOpen={isReportModalOpen}
                       onClose={() => setIsReportModalOpen(false)}
                       userId={profileData?.id}
+                      postId={0}
                     />
                   )}
                 </>
