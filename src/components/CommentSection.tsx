@@ -60,8 +60,7 @@ export default function CommentSection({ postId, onCountChange }: Props) {
 
     const roots: (Comment & { replies: Comment[] })[] = []
     map.forEach((c) => {
-      // Bắt mọi trường hợp property (kể cả camelCase do interceptor FE chuyển đổi)
-      const rawParentId = c.parent_comment_id ?? (c as any).parent_id ?? (c as any).parentCommentId
+      const rawParentId = c.parent_comment_id ?? (c as any).parentCommentId
       
       // Chặn các giá trị rác kiểu 'null', '0', 'undefined' (nếu có)
       if (rawParentId && String(rawParentId) !== 'null' && String(rawParentId) !== '0') {

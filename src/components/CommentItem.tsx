@@ -1,11 +1,11 @@
 import React, { useState, useRef } from 'react'
 import { Form, Button } from 'react-bootstrap'
 import type { Comment } from '#/types/comment'
-import { useCreateComment, useDeleteComment } from '#/api/useComment'
+import { useCreateComment, useDeleteComment, useUpdateComment } from '#/api/useComment'
 import UserAvatar from './UserAvatar'
 import { useStore } from '@tanstack/react-store'
 import { authStore } from '#/lib/auth'
-import { Trash2, Paperclip, X, Image as ImageIcon, Film, FileText, File as FileIcon } from 'lucide-react'
+import { Trash2, Pencil, Paperclip, X, Image as ImageIcon, Film, FileText, File as FileIcon } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { presignAttachments, uploadToMinIO } from '#/api/attachmentApi'
 import type { AttachmentPayload } from '#/types/post'
@@ -55,7 +55,10 @@ export default function CommentItem({ comment, postId, onCountChange }: Props) {
   const user = useStore(authStore, (s) => s.user)
   const { mutate: createReply, isPending: isReplying } = useCreateComment()
   const { mutate: deleteComment, isPending: isDeleting } = useDeleteComment()
+  const { mutate: updateComment, isPending: isUpdating } = useUpdateComment()
   const [isReplyingOpen, setIsReplyingOpen] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editContent, setEditContent] = useState(comment.content || '')
   const [replyContent, setReplyContent] = useState('')
   const [attachments, setAttachments] = useState<File[]>([])
   const [isUploading, setIsUploading] = useState(false)
@@ -150,6 +153,21 @@ export default function CommentItem({ comment, postId, onCountChange }: Props) {
     )
   }
 
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editContent.trim()) return
+
+    updateComment(
+      { id: comment.id, post_id: postId, payload: { content: editContent.trim() } },
+      {
+        onSuccess: () => {
+          setIsEditing(false)
+          toast.success('Đã cập nhật bình luận')
+        },
+      }
+    )
+  }
+
   return (
     <div className="d-flex gap-2 w-100">
       <UserAvatar fullName={comment.user.full_name} />
@@ -157,22 +175,54 @@ export default function CommentItem({ comment, postId, onCountChange }: Props) {
         <div className="bg-light rounded-4 px-3 py-2">
           <div className="d-flex justify-content-between align-items-center mb-1">
             <span className="fw-bold small">{comment.user.full_name}</span>
-            {canDelete && (
-              <button
-                type="button"
-                className="btn btn-link p-0 text-muted hover-text-danger border-0 text-decoration-none"
-                onClick={handleDelete}
-                disabled={isDeleting}
-                title="Xóa bình luận"
-              >
-                <Trash2 size={14} />
-              </button>
-            )}
-          </div>
-          {comment.content && (
-            <div className="small text-break" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
-              {comment.content}
+            <div className="d-flex gap-2">
+              {isOwner && !isEditing && (
+                <button
+                  type="button"
+                  className="btn btn-link p-0 text-muted hover-text-primary border-0 text-decoration-none"
+                  onClick={() => setIsEditing(true)}
+                  disabled={isDeleting}
+                  title="Sửa bình luận"
+                >
+                  <Pencil size={14} />
+                </button>
+              )}
+              {canDelete && (
+                <button
+                  type="button"
+                  className="btn btn-link p-0 text-muted hover-text-danger border-0 text-decoration-none"
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  title="Xóa bình luận"
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
             </div>
+          </div>
+          
+          {isEditing ? (
+            <Form onSubmit={handleEditSubmit} className="mt-2">
+              <Form.Control
+                as="textarea"
+                rows={2}
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                className="small p-2 mb-2 bg-white"
+                style={{ resize: 'none', fontSize: '0.875rem' }}
+                autoFocus
+              />
+              <div className="d-flex justify-content-end gap-2">
+                <Button variant="light" size="sm" onClick={() => { setIsEditing(false); setEditContent(comment.content || '') }} disabled={isUpdating}>Hủy</Button>
+                <Button type="submit" variant="primary" size="sm" disabled={isUpdating || !editContent.trim()}>{isUpdating ? 'Đang lưu...' : 'Lưu'}</Button>
+              </div>
+            </Form>
+          ) : (
+            comment.content && (
+              <div className="small text-break" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
+                {comment.content}
+              </div>
+            )
           )}
           
           {/* Hiển thị file đính kèm nếu có */}
