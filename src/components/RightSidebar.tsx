@@ -4,11 +4,14 @@ import { useTranslation } from 'react-i18next'
 import { useTrendingCategories } from '#/api/useCategory'
 import { useSuggestedFollows } from '#/api/useSuggestedFollows'
 import UserAvatar from './UserAvatar'
+import { Link } from '@tanstack/react-router'
+import { useToggleFollow } from '#/api/useProfile'
 
 export default function RightSidebar() {
   const { t } = useTranslation()
   const { data: trendingCategories = [], isLoading } = useTrendingCategories()
   const { data: suggestedFollows = [], isLoading: isLoadingSuggest } = useSuggestedFollows()
+  const { mutate: toggleFollow, isPending: isTogglingFollow } = useToggleFollow()
 
   return (
     <aside className="d-flex flex-column gap-4 py-4 px-3">
@@ -27,7 +30,7 @@ export default function RightSidebar() {
               <div key={category.id} className="d-flex align-items-center justify-content-between gap-2">
                 <h6 className="mb-0 fw-bold text-truncate" title={category.category_name}>{category.category_name}</h6>
                 <p className="mb-0 text-muted flex-shrink-0" style={{ fontSize: '0.75rem' }}>
-                  {category.posts_count} posts
+                  {category.post_count} posts
                 </p>
               </div>
             ))}
@@ -56,11 +59,23 @@ export default function RightSidebar() {
 
               return (
                 <div key={user.id} className="d-flex align-items-center gap-2">
-                  <UserAvatar fullName={user.full_name} avatar={user.avatar} />
+                  <Link
+                    to="/profile"
+                    search={{ user: String(user.id) }}
+                    className="text-decoration-none flex-shrink-0"
+                  >
+                    <UserAvatar fullName={user.full_name} avatar={user.avatar} />
+                  </Link>
                   <div className="flex-grow-1 text-truncate">
-                    <p className="mb-0 fw-semibold text-truncate small" title={user.full_name}>
-                      {user.full_name}
-                    </p>
+                    <Link
+                      to="/profile"
+                      search={{ user: String(user.id) }}
+                      className="text-decoration-none text-body"
+                    >
+                      <p className="mb-0 fw-semibold text-truncate small" title={user.full_name}>
+                        {user.full_name}
+                      </p>
+                    </Link>
                     <p className="mb-0 text-muted text-truncate" style={{ fontSize: '0.75rem' }} title={matchText}>
                       {matchText}
                     </p>
@@ -70,6 +85,8 @@ export default function RightSidebar() {
                     size="sm"
                     className="rounded-pill fw-medium py-1 px-3"
                     style={{ fontSize: '0.8rem' }}
+                    onClick={() => toggleFollow(user.id)}
+                    disabled={isTogglingFollow}
                   >
                     Follow
                   </Button>
