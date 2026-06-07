@@ -1,5 +1,5 @@
-import { useSearchPost } from '#/api/usePost'
-import { useSearchUser } from '#/api/useUser'
+import { useQuery } from '@tanstack/react-query'
+import axiosClient from '#/api/axiosClient'
 import FeedPostCard from '#/components/FeedPostCard'
 import UserCard from '#/components/UserCard'
 import { createFileRoute, useSearch } from '@tanstack/react-router'
@@ -15,8 +15,26 @@ function RouteComponent() {
   const { keyword } = useSearch({
     from: '/_authenticated/dashboard/search',
   }) as { keyword: string }
-  const { data: posts, isLoading } = useSearchPost(keyword)
-  const { data: users, isLoading: isLoadingUsers } = useSearchUser(keyword)
+
+  const { data: posts, isLoading } = useQuery({
+    queryKey: ['post', 'search', keyword],
+    queryFn: async () => {
+      if (!keyword) return { data: [] }
+      const response = await axiosClient.get('/posts/', { params: { keyword } })
+      return response.data
+    },
+    enabled: !!keyword,
+  })
+
+  const { data: users, isLoading: isLoadingUsers } = useQuery({
+    queryKey: ['user', 'search', keyword],
+    queryFn: async () => {
+      if (!keyword) return { data: [] }
+      const response = await axiosClient.get('/search/user', { params: { keyword } })
+      return response.data
+    },
+    enabled: !!keyword,
+  })
   const { t } = useTranslation()
 
   const hasPosts = (posts?.data?.length ?? 0) > 0
