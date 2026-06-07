@@ -6,11 +6,12 @@ import { useSuggestedFollows } from '#/api/useSuggestedFollows'
 import UserAvatar from './UserAvatar'
 import { Link } from '@tanstack/react-router'
 import { useToggleFollow } from '#/api/useProfile'
+import toast from 'react-hot-toast'
 
 export default function RightSidebar() {
   const { t } = useTranslation()
   const { data: trendingCategories = [], isLoading } = useTrendingCategories()
-  const { data: suggestedFollows = [], isLoading: isLoadingSuggest } = useSuggestedFollows()
+  const { data: suggestedFollows = [], isLoading: isLoadingSuggest, refetch: refetchSuggested } = useSuggestedFollows()
   const { mutate: toggleFollow, isPending: isTogglingFollow } = useToggleFollow()
 
   return (
@@ -85,7 +86,15 @@ export default function RightSidebar() {
                     size="sm"
                     className="rounded-pill fw-medium py-1 px-3"
                     style={{ fontSize: '0.8rem' }}
-                    onClick={() => toggleFollow(user.id)}
+                    onClick={() => toggleFollow(user.id, {
+                      onSuccess: () => {
+                        toast.success('Đã theo dõi thành công!')
+                        refetchSuggested()
+                      },
+                      onError: () => {
+                        toast.error('Có lỗi xảy ra, vui lòng thử lại.')
+                      }
+                    })}
                     disabled={isTogglingFollow}
                   >
                     Follow

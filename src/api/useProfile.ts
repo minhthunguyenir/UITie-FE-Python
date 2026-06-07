@@ -21,7 +21,7 @@ export function useUpdateProfile() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (payload: any) => {
-      const response = await axiosClient.put('/user/profile', payload)
+      const response = await axiosClient.put('/profile', payload)
       return response.data
     },
     onSuccess: () => {
