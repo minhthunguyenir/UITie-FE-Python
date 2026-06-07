@@ -3,8 +3,8 @@ import { Modal, Button, Form } from 'react-bootstrap';
 import { useCreateReport } from '#/api/useReport'; // Đảm bảo đường dẫn này khớp với dự án của bạn
 
 interface ReportModalProps {
-  postId: number;
-  userId?: number;
+  postId: number | string;
+  userId?: number | string;
   onClose: () => void;
 }
 
@@ -26,7 +26,8 @@ export default function ReportModal({ postId, userId, onClose }: ReportModalProp
       // 🚩 TRƯỜNG HỢP: BÁO CÁO TÀI KHOẢN (Bấm từ trang cá nhân)
       createReport(
         { 
-          post_id: userId, // Tận dụng biến truyền đi làm ID, hook useReport sẽ nối trúng URL Backend nhờ hàm API tụi mình sửa lúc đầu
+          // Ép kiểu về Number để đảm bảo an toàn gửi xuống Backend
+          post_id: Number(userId), 
           reason: reason 
         },
         {
@@ -39,7 +40,7 @@ export default function ReportModal({ postId, userId, onClose }: ReportModalProp
       // 🚩 TRƯỜNG HỢP: BÁO CÁO BÀI VIẾT (Cũ ngoài bảng tin Feed)
       createReport(
         { 
-          post_id: postId, 
+          post_id: Number(postId), 
           reason: reason 
         },
         {
